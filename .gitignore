@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+# Python
+__pycache__/
+*.pyc
+venv/
+# Large data & checkpoints (keep repo small)
+data/DB-1/
+data/DB-3/
+data/*.zip
+runs/*/best.pt
+runs/*/history.json
+runs/*/test_metrics.json
+runs/db1_pvt/
+runs/db3_sample/
+runs/smoke/
+work/db3_py_out/
+# figshare cookies / temp
+work/*.json
+work/*.log
+work/jar*.txt
+work/t*.bin
