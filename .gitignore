@@ -4,14 +4,11 @@
 __pycache__/
 *.pyc
 venv/
-# Large data & checkpoints (keep repo small)
+# Raw datasets (too large for GitHub; download from Figshare 29222462)
 data/DB-1/
 data/DB-3/
 data/*.zip
-runs/*/best.pt
-runs/*/history.json
-runs/*/test_metrics.json
-runs/db1_pvt/
+# Local run dirs with large intermediate files
 runs/db3_sample/
 runs/smoke/
 work/db3_py_out/

@@ -52,6 +52,7 @@ def main():
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--num-workers", type=int, default=4)
     ap.add_argument("--no-pretrained", action="store_true")
+    ap.add_argument("--resume", default=None, help="Path to checkpoint to resume from")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -82,8 +83,20 @@ def main():
     best_dice = 0.0
     patience = 0
     history = []
+    start_epoch = 1
 
-    for epoch in range(1, args.epochs + 1):
+    if args.resume:
+        ckpt = torch.load(args.resume, map_location=device, weights_only=False)
+        model.load_state_dict(ckpt["model"])
+        start_epoch = ckpt.get("epoch", 0) + 1
+        best_dice = ckpt.get("val", {}).get("DICE", 0.0)
+        print(f"resumed from {args.resume} (epoch {start_epoch - 1}, best DICE {best_dice:.4f})")
+        hist_path = out / "history.json"
+        if hist_path.exists():
+            with open(hist_path) as f:
+                history = json.load(f)
+
+    for epoch in range(start_epoch, args.epochs + 1):
         model.train()
         t0 = time.time()
         running = 0.0
@@ -106,6 +119,14 @@ def main():
               f"val SEN={val_metrics['SEN']:.4f} DICE={val_metrics['DICE']:.4f} IoU={val_metrics['IoU']:.4f} "
               f"({elapsed:.0f}s)")
         history.append({"epoch": epoch, "loss": train_loss, **{f"val_{k}": v for k, v in val_metrics.items()}})
+        # de-duplicate by epoch in case of resume overwrite
+        seen = set()
+        dedup = []
+        for e in history:
+            if e["epoch"] not in seen:
+                dedup.append(e)
+                seen.add(e["epoch"])
+        history = dedup
         with open(out / "history.json", "w") as f:
             json.dump(history, f, indent=2)
 
