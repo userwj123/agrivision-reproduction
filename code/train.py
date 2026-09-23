@@ -52,6 +52,9 @@ def main():
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--num-workers", type=int, default=4)
     ap.add_argument("--no-pretrained", action="store_true")
+    ap.add_argument("--strong-augment", action="store_true", help="Enable stronger data augmentation")
+    ap.add_argument("--weight-decay", type=float, default=0.0, help="L2 weight decay")
+    ap.add_argument("--dropout", type=float, default=None, help="Override model dropout rate")
     ap.add_argument("--resume", default=None, help="Path to checkpoint to resume from")
     args = ap.parse_args()
 
@@ -60,7 +63,8 @@ def main():
     print(f"device={device}")
 
     ds = AgriVisionSeg(args.data, image_sub=args.image_sub, mask_sub=args.mask_sub,
-                       img_size=args.img_size, train=True, augment=True)
+                       img_size=args.img_size, train=True, augment=True,
+                       strong_augment=args.strong_augment)
     ds_eval = AgriVisionSeg(args.data, image_sub=args.image_sub, mask_sub=args.mask_sub,
                             img_size=args.img_size, train=False, augment=False)
     train_ds, val_ds, test_ds = make_splits(ds, seed=args.seed)
@@ -74,9 +78,13 @@ def main():
     test_loader = DataLoader(test_ds_eval, batch_size=args.batch_size, shuffle=False,
                              num_workers=args.num_workers, pin_memory=True)
 
-    model = PVTSN(backbone=args.backbone, pretrained=not args.no_pretrained).to(device)
+    model_kwargs = dict(backbone=args.backbone, pretrained=not args.no_pretrained)
+    if args.dropout is not None:
+        model_kwargs["dropout"] = args.dropout
+    model = PVTSN(**model_kwargs).to(device)
     loss_fn = WeightedBCE()
-    opt = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999))
+    opt = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999),
+                           weight_decay=args.weight_decay)
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

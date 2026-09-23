@@ -25,11 +25,12 @@ class AgriVisionSeg(Dataset):
     """Binary berry segmentation. Masks are binary (0/255)."""
 
     def __init__(self, root, image_sub="Images", mask_sub="Masks",
-                 img_size=512, train=False, augment=False):
+                 img_size=512, train=False, augment=False, strong_augment=False):
         self.root = Path(root)
         self.img_size = img_size
         self.train = train
         self.augment = augment
+        self.strong_augment = strong_augment
         self.images = _collect(self.root, image_sub)
         self.pairs = []
         for ip in self.images:
@@ -66,6 +67,20 @@ class AgriVisionSeg(Dataset):
         if random.random() < 0.5:
             img = TF.adjust_brightness(img, random.uniform(0.8, 1.2))
             img = TF.adjust_contrast(img, random.uniform(0.8, 1.2))
+        if self.strong_augment:
+            if random.random() < 0.5:
+                img = TF.adjust_saturation(img, random.uniform(0.7, 1.3))
+            if random.random() < 0.3:
+                img = TF.adjust_hue(img, random.uniform(-0.05, 0.05))
+            if random.random() < 0.5:
+                img = TF.gaussian_blur(img, kernel_size=random.choice([3, 5]))
+            if random.random() < 0.5:
+                # random affine: scale + translate
+                scale = random.uniform(0.85, 1.15)
+                max_dx = int(0.08 * img.size[0])
+                max_dy = int(0.08 * img.size[1])
+                img = TF.affine(img, angle=0, translate=(random.randint(-max_dx, max_dx), random.randint(-max_dy, max_dy)), scale=scale, shear=0)
+                mask = TF.affine(mask, angle=0, translate=(random.randint(-max_dx, max_dx), random.randint(-max_dy, max_dy)), scale=scale, shear=0)
         return img, mask
 
     def __getitem__(self, i):
